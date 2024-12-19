@@ -3,6 +3,8 @@ from typing import List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.init as init
+
 from torch.nn.functional import avg_pool2d, relu
 
 from backbone import MammothBackbone, register_backbone
@@ -12,6 +14,18 @@ class CNN_2Stream(MammothBackbone):
         super(CNN_2Stream, self).__init__()
         
         self.conv1 = nn.Conv1d(3, 512, kernel_size = 7, padding = 'same')
+        
+        # Weight와 Bias 초기화
+        # TruncatedNormal 초기화
+        truncated_stddev = 0.01
+        with torch.no_grad():
+            self.conv1.weight.normal_(mean=0.0, std=truncated_stddev)
+            # Truncated Normal 효과를 위해 값 제한
+            self.conv1.weight.clamp_(-2 * truncated_stddev, 2 * truncated_stddev)
+        
+        # Bias를 0.01로 초기화
+        init.constant_(self.conv1.bias, 0.01)
+        
         self.maxpool1 = nn.MaxPool1d(3, 3)
         self.sigmoid = nn.Sigmoid()
         
@@ -60,6 +74,7 @@ class CNN_2Stream(MammothBackbone):
         x = self.fc(x)
 
         return x
+
 @register_backbone("pugbackbone")
 def pugbackbone():
     return CNN_2Stream(4)
